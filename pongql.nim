@@ -3,7 +3,9 @@ import
   sdl2_nim/sdl,
   std/math,
   std/tables,
-  std/enumerate
+  std/enumerate,
+  std/strutils,
+  std/strformat
 
 const
   Title = "SDL2 App"
@@ -579,24 +581,47 @@ proc qUpdate(value, rew: float): float =
 
 
 proc goUpAdd() =
-  actionStateTable[currStateOuter][currStateInner].state.goUp = qUpdate(actionStateTable[currStateOuter][currStateInner].state.goUp, REWARD_POS)
+  var reward =  qUpdate(actionStateTable[currStateOuter][currStateInner].state.goUp, REWARD_POS)
+  actionStateTable[currStateOuter][currStateInner].state.goUp = reward
+
+  var rewardStr = reward.formatFloat(ffDecimal, 4)
+  echo(fmt"Rewarded pos {rewardStr}  to states:  {currStateOuter}  ---   {currStateInner} for going up")
 
 proc goDownAdd() =
-  actionStateTable[currStateOuter][currStateInner].state.goDown = qUpdate(actionStateTable[currStateOuter][currStateInner].state.goDown, REWARD_POS)
+  var reward = qUpdate(actionStateTable[currStateOuter][currStateInner].state.goDown, REWARD_POS)
+  actionStateTable[currStateOuter][currStateInner].state.goDown = reward
+
+  var rewardStr = reward.formatFloat(ffDecimal, 4)
+  echo(fmt"Rewarded pos {rewardStr}  to states:  {currStateOuter}  ---   {currStateInner} for going down")
 
 proc doNothinAdd() =
-  actionStateTable[currStateOuter][currStateInner].state.doNothing = qUpdate(actionStateTable[currStateOuter][currStateInner].state.doNothing, REWARD_POS)
+  var reward = qUpdate(actionStateTable[currStateOuter][currStateInner].state.doNothing, REWARD_POS)
+  actionStateTable[currStateOuter][currStateInner].state.doNothing = reward
 
+  var rewardStr = reward.formatFloat(ffDecimal, 4)
+  echo(fmt"Rewarded pos {rewardStr}  to states:  {currStateOuter}  ---   {currStateInner} for doing nothing")
 
 
 proc goUpASub() =
-  actionStateTable[currStateOuter][currStateInner].state.goUp = qUpdate(actionStateTable[currStateOuter][currStateInner].state.goUp, REWARD_NEG)
+  var reward = qUpdate(actionStateTable[currStateOuter][currStateInner].state.goUp, REWARD_NEG)
+  actionStateTable[currStateOuter][currStateInner].state.goUp = reward
+
+  var rewardStr = reward.formatFloat(ffDecimal, 4)
+  echo(fmt"Rewarded neg {rewardStr}  to states:  {currStateOuter}  ---   {currStateInner} for going up")
 
 proc goDownSub() =
-  actionStateTable[currStateOuter][currStateInner].state.goDown = qUpdate(actionStateTable[currStateOuter][currStateInner].state.goDown, REWARD_NEG)
+  var reward = qUpdate(actionStateTable[currStateOuter][currStateInner].state.goDown, REWARD_NEG)
+  actionStateTable[currStateOuter][currStateInner].state.goDown = reward
+
+  var rewardStr = reward.formatFloat(ffDecimal, 4)
+  echo(fmt"Rewarded neg {rewardStr}  to states:  {currStateOuter}  ---   {currStateInner} for going down")
 
 proc doNothinSub() =
-  actionStateTable[currStateOuter][currStateInner].state.doNothing = qUpdate(actionStateTable[currStateOuter][currStateInner].state.doNothing, REWARD_NEG)
+  var reward = qUpdate(actionStateTable[currStateOuter][currStateInner].state.doNothing, REWARD_NEG)
+  actionStateTable[currStateOuter][currStateInner].state.doNothing = reward
+
+  var rewardStr = reward.formatFloat(ffDecimal, 4)
+  echo(fmt"Rewarded neg {rewardStr}  to states:  {currStateOuter}  ---   {currStateInner} for doing nothing")
 
 
 proc assertAction() =
