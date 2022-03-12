@@ -328,7 +328,7 @@ proc `<->`(xSpeedX, ySpeedX: int) =
 
 proc `?>`(xii, yii: int) = 
 
-    if xii <= 0 or xii >= ScreenW:
+    if xii <= -PADDLE_WIDTH or xii >= ScreenW + PADDLE_WIDTH:
         delay(DELAY_TIME)
         xi = ScreenW div 2
         yi = ScreenH div 2
@@ -346,8 +346,8 @@ const
     MIN_DIST_NEAR = 60
 
 var
-    goUp = false
-    goDown = false
+    goUpper = false
+    goDowner = false
     speedUp = false
     resetPos = false
     isNear = false
@@ -408,14 +408,14 @@ proc calcGoUp() =
     var probXWidth = float(xi)|float(ScreenW)
 
 
-    goUp = probYHeight <= 0.5 and probXWidth >= 0.75
+    goUpper = probYHeight <= 0.5 and probXWidth >= 0.75
 
 
 proc calcGoDown() =
     var probYHeight = float(yi)|float(ScreenH)
     var probXWidth = float(xi)|float(ScreenW)
 
-    goDown = probYHeight >= 0.5 and probXWidth >= 0.75
+    goDowner = probYHeight >= 0.5 and probXWidth >= 0.75
 
 
 proc calcReset() = 
@@ -441,9 +441,9 @@ proc `+->`(opX: int) =
 
     if localResPos:
       paddleOpponentY += -sign * PADDLE_SPEED_OPPONENT
-    if goUp and isDown and dontResetPos and not localResPos and not isNear:
+    if goUpper and isDown and dontResetPos and not localResPos and not isNear:
       paddleOpponentY -= PADDLE_SPEED_OPPONENT * speedCoeff
-    if goDOwn and isUp and dontResetPos and not localResPos and not isNear:
+    if goDOwner and isUp and dontResetPos and not localResPos and not isNear:
       paddleOpponentY += PADDLE_SPEED_OPPONENT * speedCoeff
     
         
