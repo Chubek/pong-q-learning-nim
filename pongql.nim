@@ -130,6 +130,8 @@ const
 
     STOP_TIME = 25
 
+    DELAY_TIME = 800
+
 
 
 var
@@ -327,7 +329,7 @@ proc `<->`(xSpeedX, ySpeedX: int) =
 proc `?>`(xii, yii: int) = 
 
     if xii <= 0 or xii >= ScreenW:
-        delay(2000)
+        delay(DELAY_TIME)
         xi = ScreenW div 2
         yi = ScreenH div 2
         xSpeed = POSSIBLE_INIT_SPEEDS.sample()
