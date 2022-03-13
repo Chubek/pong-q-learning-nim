@@ -132,6 +132,8 @@ const
 
     DELAY_TIME = 800
 
+    DID_BOUNCE_TIME = 50
+
 
 
 var
@@ -165,6 +167,10 @@ var
     tick: uint32 = STOP_TIME
 
     ballCollisionPoint = 0
+
+    didBouncePlayer = false
+
+    tickDidBounce = DID_BOUNCE_TIME
 
 
 proc drawMiddleLine(app: App) =
@@ -213,7 +219,7 @@ proc calculateStateOfGame() =
     stateOfGameBuffer[bufferIndex] = gameState.opponentLost
 
   if xi <= 0:
-    stateOfGameBuffer[bufferIndex] = gameState.opponentLost
+    stateOfGameBuffer[bufferIndex] = gameState.playerLost
 
   if xi >= 0 and xi < ScreenW:
     stateOfGameBuffer[bufferIndex] = gameState.playing
@@ -242,6 +248,12 @@ proc controlPlayerPaddle() =
   
   if actionDo == possiblePlayerActions.goDown and paddlePlayerY < ScreenH - PADDLE_HEIGHT:
     paddlePlayerY += PADDLE_SPEED_PLAYER
+
+
+  if stopBounce and paddlePlayerY >= (ScreenH div 2):
+    paddlePlayerY -= PADDLE_SPEED_PLAYER div 2
+  elif stopBounce and paddlePlayerY < (ScreenH div 2):
+    paddlePlayerY += PADDLE_SPEED_PLAYER div 2
 
 
 proc drawBall(app: App) = 
@@ -300,6 +312,23 @@ proc stopTheBounce() =
     discard sdl.removeTimer(timer)    
 
 
+proc didBounceTimer(interval: uint32, param: pointer): uint32 {.cdecl.} =
+  tickDidBounce -= 1
+  if tickDidBounce == 0:
+   didBouncePlayer = false
+
+  return tick
+
+
+
+
+proc doTheDidBounce() =
+  didBouncePlayer = true
+  var timer = sdl.addTimer(STOP_TIME, didBounceTimer, nil)
+
+  if timer == 0:
+    discard sdl.removeTimer(timer)    
+
 proc `<->`(xSpeedX, ySpeedX: int) = 
     if not stopBounce:    
       xi += xSpeedX
@@ -313,12 +342,17 @@ proc `<->`(xSpeedX, ySpeedX: int) =
       if not stopBounce:
         tick = STOP_TIME
         stopTheBounce()
+
+      if not didBouncePlayer:
+        tickDidBounce = DID_BOUNCE_TIME
+        doTheDidBounce()
       
 
 
     if xi >= PADDLE_OPPONENT_X - (PADDLE_WIDTH div 2) and  yi >= paddleOpponentY and yi < paddleOpponentY + PADDLE_HEIGHT:
       xSpeed *= -1
       ySpeed *= -1
+      didBouncePlayer = false
 
 
     if yi <= 0 or yi >= ScreenH:
@@ -330,6 +364,7 @@ proc `?>`(xii, yii: int) =
 
     if xii <= -PADDLE_WIDTH or xii >= ScreenW + PADDLE_WIDTH:
         delay(DELAY_TIME)
+        didBouncePlayer = false
         xi = ScreenW div 2
         yi = ScreenH div 2
         xSpeed = POSSIBLE_INIT_SPEEDS.sample()
@@ -463,28 +498,28 @@ type
 
 var actionStateTable = {
       "ballNear": {
-          "above": StateMap(state: ActionMap(goUp: rand(10.0), goDown: rand(10.0), doNothing:  rand(10.0))),
-          "below": StateMap(state: ActionMap(goUp: rand(10.0), goDown: rand(10.0), doNothing:  rand(10.0))), 
-          "level": StateMap(state: ActionMap(goUp: rand(10.0), goDown: rand(10.0), doNothing:  rand(10.0))), 
+          "above": StateMap(state: ActionMap(goUp: rand(2.0), goDown: rand(2.0), doNothing:  rand(2.0))),
+          "below": StateMap(state: ActionMap(goUp: rand(2.0), goDown: rand(2.0), doNothing:  rand(2.0))), 
+          "level": StateMap(state: ActionMap(goUp: rand(2.0), goDown: rand(2.0), doNothing:  rand(2.0))), 
 
       
       }.toTable(),
       "ballClose": {
-          "above": StateMap(state: ActionMap(goUp: rand(10.0), goDown: rand(10.0), doNothing:  rand(10.0))),
-          "below": StateMap(state: ActionMap(goUp: rand(10.0), goDown: rand(10.0), doNothing:  rand(10.0))), 
-          "level": StateMap(state: ActionMap(goUp: rand(10.0), goDown: rand(10.0), doNothing:  rand(10.0))), 
+          "above": StateMap(state: ActionMap(goUp: rand(2.0), goDown: rand(2.0), doNothing:  rand(2.0))),
+          "below": StateMap(state: ActionMap(goUp: rand(2.0), goDown: rand(2.0), doNothing:  rand(2.0))), 
+          "level": StateMap(state: ActionMap(goUp: rand(2.0), goDown: rand(2.0), doNothing:  rand(2.0))), 
 
       }.toTable(),
       "ballWReach": {
-          "above": StateMap(state: ActionMap(goUp: rand(10.0), goDown: rand(10.0), doNothing:  rand(10.0))),
-          "below": StateMap(state: ActionMap(goUp: rand(10.0), goDown: rand(10.0), doNothing:  rand(10.0))), 
-          "level": StateMap(state: ActionMap(goUp: rand(10.0), goDown: rand(10.0), doNothing:  rand(10.0))), 
+          "above": StateMap(state: ActionMap(goUp: rand(2.0), goDown: rand(2.0), doNothing:  rand(2.0))),
+          "below": StateMap(state: ActionMap(goUp: rand(2.0), goDown: rand(2.0), doNothing:  rand(2.0))), 
+          "level": StateMap(state: ActionMap(goUp: rand(2.0), goDown: rand(2.0), doNothing:  rand(2.0))), 
 
       }.toTable(),
        "ballOReach": {
-          "above": StateMap(state: ActionMap(goUp: rand(10.0), goDown: rand(10.0), doNothing:  rand(10.0))),
-          "below": StateMap(state: ActionMap(goUp: rand(10.0), goDown: rand(10.0), doNothing:  rand(10.0))), 
-          "level": StateMap(state: ActionMap(goUp: rand(10.0), goDown: rand(10.0), doNothing:  rand(10.0))), 
+          "above": StateMap(state: ActionMap(goUp: rand(2.0), goDown: rand(2.0), doNothing:  rand(2.0))),
+          "below": StateMap(state: ActionMap(goUp: rand(2.0), goDown: rand(2.0), doNothing:  rand(2.0))), 
+          "level": StateMap(state: ActionMap(goUp: rand(2.0), goDown: rand(2.0), doNothing:  rand(2.0))), 
 
       }.toTable()
 
@@ -515,26 +550,26 @@ var
 
 proc getState() =
   let 
-    distBallTop = (xi, yi)~~~>(PADDLE_OPPONENT_X - PADDLE_WIDTH, paddleOpponentY)
-    distBallMiddle = (xi, yi)~~~>(PADDLE_OPPONENT_X - PADDLE_WIDTH, paddleOpponentY + (PADDLE_HEIGHT div 2))
-    distBallBottom = (xi, yi)~~~>(PADDLE_OPPONENT_X - PADDLE_WIDTH, paddleOpponentY + PADDLE_HEIGHT)
+    distBallTop = (xi, yi)~~~>(PADDLE_PLAYER_X - PADDLE_WIDTH, paddlePlayerY)
+    distBallMiddle = (xi, yi)~~~>(PADDLE_PLAYER_X - PADDLE_WIDTH, paddlePlayerY + (PADDLE_HEIGHT div 2))
+    distBallBottom = (xi, yi)~~~>(PADDLE_PLAYER_X - PADDLE_WIDTH, paddlePlayerY + PADDLE_HEIGHT)
 
 
-    ballTopNear = distBallTop|DENUM_NEAR <= 5
-    ballMiddleNear = distBallMiddle|DENUM_NEAR <= 5
-    ballBottomNear = distBallBottom|DENUM_NEAR <= 5    
+    ballTopNear = distBallTop|DENUM_NEAR <= 1.0
+    ballMiddleNear = distBallMiddle|DENUM_NEAR <= 1.0
+    ballBottomNear = distBallBottom|DENUM_NEAR <= 1.0
 
-    ballTopClose = distBallTop|DENUM_CLOSE <= 5
-    ballMiddleClose = distBallMiddle|DENUM_CLOSE <= 5
-    ballBottomClose = distBallBottom|DENUM_CLOSE <= 5
+    ballTopClose = distBallTop|DENUM_CLOSE <= 1.0
+    ballMiddleClose = distBallMiddle|DENUM_CLOSE <= 1.0
+    ballBottomClose = distBallBottom|DENUM_CLOSE <= 1.0
 
-    ballTopWReach = distBallTop|DENUM_WREACH <= 5
-    ballMiddleWReach = distBallMiddle|DENUM_WREACH <= 5
-    ballBottomWReach = distBallBottom|DENUM_WREACH <= 5
+    ballTopWReach = distBallTop|DENUM_WREACH <= 1.0
+    ballMiddleWReach = distBallMiddle|DENUM_WREACH <= 1.0
+    ballBottomWReach = distBallBottom|DENUM_WREACH <= 1.0
 
-    ballTopOReach = distBallTop|DENUM_OREACH <= 5
-    ballMiddleOReach = distBallMiddle|DENUM_OREACH <= 5
-    ballBottomOReach = distBallBottom|DENUM_OREACH <= 5
+    ballTopOReach = distBallTop|DENUM_OREACH <= 1.0
+    ballMiddleOReach = distBallMiddle|DENUM_OREACH <= 1.0
+    ballBottomOReach = distBallBottom|DENUM_OREACH <= 1.0
 
 
 
@@ -550,9 +585,9 @@ proc getState() =
 
 
   let
-    isAbove = yi|ABOVE <= 0.5
-    isBelow = yi|BELOW <= 0.5
-    isLevel = yi|LEVEL <= 0.5
+    isAbove = 0 < yi and yi <= ABOVE
+    isBelow = yi >= BELOW and yi < ScreenH
+    isLevel = yi >= LEVEL - (PADDLE_HEIGHT div 2) and yi < LEVEL + (PADDLE_HEIGHT div 2)
 
 
   if isAbove:
@@ -564,8 +599,8 @@ proc getState() =
 
 
 const 
-  REWARD_POS = 10.0
-  REWARD_NEG = -10.0
+  REWARD_POS = 100.0
+  REWARD_NEG = -120.0
 
   LEARNING_RATE = 0.0002
   DISCOUNT_RATE = 0.02
@@ -627,6 +662,9 @@ proc doNothinSub() =
 
 
 proc assertAction() =
+  if xi >= ScreenW div 4 or didBouncePlayer:
+    return
+
   getState()
 
   var 
