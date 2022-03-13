@@ -761,7 +761,9 @@ proc rewardState() =
 
 let t0 = cpuTime()
 
-var doSave = true
+var 
+  doSave = true
+  f = open("action_state.json", fmWrite)
 
 proc saveTable() =   
   let t1 = cpuTime()
@@ -769,11 +771,8 @@ proc saveTable() =
   if (t1 - t0) mod 160.0 == 0 and doSave:
     doSave = false
 
-    var f = open("action_state.json", fmWrite)
+    f.write(fmt"\n---------- \n{$$actionStateTable}")
 
-    f.write($$actionStateTable)
-
-    f.close()
 
   if (t1 - t0) mod 165.0 == 0 and not doSave:
     doSave = true
@@ -812,4 +811,5 @@ if init(app):
 
 # Shutdown
 exit(app)
+f.close()
 
