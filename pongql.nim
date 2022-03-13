@@ -5,8 +5,9 @@ import
   std/tables,
   std/enumerate,
   std/strutils,
-  std/strformat
-
+  std/strformat,
+  std/marshal,
+  std/times
 const
   Title = "SDL2 App"
   ScreenW = 640 # Window width
@@ -15,11 +16,26 @@ const
   RendererFlags = sdl.RendererAccelerated or sdl.RendererPresentVsync
 
 
+
+
+
 type
   App = ref AppObj
   AppObj = object
     window*: sdl.Window # Window pointer
     renderer*: sdl.Renderer # Rendering state pointer
+  ActionMap* = object
+    goUp: float
+    goDown: float
+    doNothing: float
+
+  StateMap* = object
+    state: ActionMap
+
+  ThreadData = Table[string, Table[string, StateMap]]
+
+
+  
 
 
 proc init(app: App): bool =
@@ -126,7 +142,7 @@ const
     RADIUS = 8
     RADIUS_MULT_TWO = RADIUS shl 1
 
-    POSSIBLE_INIT_SPEEDS = [-6, 6]
+    POSSIBLE_INIT_SPEEDS = [-10, 10]
 
     STOP_TIME = 25
 
@@ -170,7 +186,11 @@ var
 
     didBouncePlayer = false
 
-    tickDidBounce = DID_BOUNCE_TIME
+    tickDidBounce: uint32 = DID_BOUNCE_TIME
+
+    tickOpponentBounce: uint32 = 5
+
+    didBounceOpponent = false
 
 
 proc drawMiddleLine(app: App) =
@@ -317,7 +337,7 @@ proc didBounceTimer(interval: uint32, param: pointer): uint32 {.cdecl.} =
   if tickDidBounce == 0:
    didBouncePlayer = false
 
-  return tick
+  return tickDidBounce
 
 
 
@@ -325,6 +345,24 @@ proc didBounceTimer(interval: uint32, param: pointer): uint32 {.cdecl.} =
 proc doTheDidBounce() =
   didBouncePlayer = true
   var timer = sdl.addTimer(STOP_TIME, didBounceTimer, nil)
+
+  if timer == 0:
+    discard sdl.removeTimer(timer)    
+
+
+proc didOppBounceTimer(interval: uint32, param: pointer): uint32 {.cdecl.} =
+  tickOpponentBounce -= 1
+  if tickOpponentBounce == 0:
+    didBounceOpponent = false
+
+  return tickOpponentBounce
+
+
+
+
+proc doTheOppDidBounce() =
+  didBounceOpponent = true
+  var timer = sdl.addTimer(STOP_TIME, didOppBounceTimer, nil)
 
   if timer == 0:
     discard sdl.removeTimer(timer)    
@@ -354,6 +392,10 @@ proc `<->`(xSpeedX, ySpeedX: int) =
       ySpeed *= -1
       didBouncePlayer = false
 
+      if not didBounceOpponent:
+        tickOpponentBounce = 10
+        doTheOppDidBounce()
+
 
     if yi <= 0 or yi >= ScreenH:
       ySpeed *= -1
@@ -362,8 +404,7 @@ proc `<->`(xSpeedX, ySpeedX: int) =
 
 proc `?>`(xii, yii: int) = 
 
-    if xii <= -PADDLE_WIDTH or xii >= ScreenW + PADDLE_WIDTH:
-        delay(DELAY_TIME)
+    if xi <= -PADDLE_WIDTH or xi >= ScreenW + RADIUS or K_r in pressed:
         didBouncePlayer = false
         xi = ScreenW div 2
         yi = ScreenH div 2
@@ -371,7 +412,8 @@ proc `?>`(xii, yii: int) =
         ySpeed = POSSIBLE_INIT_SPEEDS.sample()
         paddlePlayerY = ScreenH div 2
         paddleOpponentY = ScreenH div 2
-  
+        delay(DELAY_TIME)
+
 
 ###################################AI####################333###############################3
 
@@ -480,23 +522,16 @@ proc `+->`(opX: int) =
       paddleOpponentY -= PADDLE_SPEED_OPPONENT * speedCoeff
     if goDOwner and isUp and dontResetPos and not localResPos and not isNear:
       paddleOpponentY += PADDLE_SPEED_OPPONENT * speedCoeff
-    
+
         
 
 
 ##############################Q-Learning############################################################################3
 
 
-type 
-  ActionMap* = object
-    goUp: float
-    goDown: float
-    doNothing: float
 
-  StateMap* = object
-    state: ActionMap
 
-var actionStateTable = {
+var actionStateTable: ThreadData = {
       "ballNear": {
           "above": StateMap(state: ActionMap(goUp: rand(2.0), goDown: rand(2.0), doNothing:  rand(2.0))),
           "below": StateMap(state: ActionMap(goUp: rand(2.0), goDown: rand(2.0), doNothing:  rand(2.0))), 
@@ -600,9 +635,9 @@ proc getState() =
 
 const 
   REWARD_POS = 100.0
-  REWARD_NEG = -120.0
+  REWARD_NEG = -100.0
 
-  LEARNING_RATE = 0.0002
+  LEARNING_RATE = 0.0000002
   DISCOUNT_RATE = 0.02
 
 
@@ -705,7 +740,48 @@ proc rewardState() =
       elif actionDo == possiblePlayerActions.goUp:
         goUpAdd()
 
+
+    else:
+      if didBounceOpponent:
+        if actionDo == possiblePlayerActions.doNothing:
+          doNothinSub()
+        elif actionDo == possiblePlayerActions.goDown:
+          goDownSub()
+        elif actionDo == possiblePlayerActions.goUp:
+          goUpASub()
+      elif didBouncePlayer:
+        if actionDo == possiblePlayerActions.doNothing:
+          doNothinAdd()
+        elif actionDo == possiblePlayerActions.goDown:
+          goDownAdd()
+        elif actionDo == possiblePlayerActions.goUp:
+          goUpAdd()
+
+
+
+let t0 = cpuTime()
+
+var doSave = true
+
+proc saveTable() =   
+  let t1 = cpuTime()
+
+  if (t1 - t0) mod 160.0 == 0 and doSave:
+    doSave = false
+
+    var f = open("action_state.json", fmWrite)
+
+    f.write($$actionStateTable)
+
+    f.close()
+
+  if (t1 - t0) mod 165.0 == 0 and not doSave:
+    doSave = true
+
+  
+
 if init(app):
+
     while not done:
 
         done = events(pressed)
@@ -726,9 +802,14 @@ if init(app):
         
         calculateStateOfGame()
         rewardState()
+        
+
 
         >>app
+
+        saveTable()
 
 
 # Shutdown
 exit(app)
+
