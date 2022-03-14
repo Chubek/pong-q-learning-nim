@@ -7,7 +7,9 @@ import
   std/strutils,
   std/strformat,
   std/json,
-  std/marshal
+  std/marshal,
+  std/times,
+  std/os
 
 const
   Title = "SDL2 App"
@@ -657,44 +659,44 @@ proc goUpAdd() =
   var reward =  qUpdate(actionStateTable[currStateOuter][currStateInner].state.goUp, REWARD_POS)
   actionStateTable[currStateOuter][currStateInner].state.goUp = reward
 
-  var rewardStr = reward.formatFloat(ffDecimal, 4)
-  echo(fmt"Rewarded pos {rewardStr}  to states:  {currStateOuter}  ---   {currStateInner} for going up")
+  #var rewardStr = reward.formatFloat(ffDecimal, 4)
+ # echo(fmt"Rewarded pos {rewardStr}  to states:  {currStateOuter}  ---   {currStateInner} for going up")
 
 proc goDownAdd() =
   var reward = qUpdate(actionStateTable[currStateOuter][currStateInner].state.goDown, REWARD_POS)
   actionStateTable[currStateOuter][currStateInner].state.goDown = reward
 
-  var rewardStr = reward.formatFloat(ffDecimal, 4)
-  echo(fmt"Rewarded pos {rewardStr}  to states:  {currStateOuter}  ---   {currStateInner} for going down")
+ # var rewardStr = reward.formatFloat(ffDecimal, 4)
+ # echo(fmt"Rewarded pos {rewardStr}  to states:  {currStateOuter}  ---   {currStateInner} for going down")
 
 proc doNothinAdd() =
   var reward = qUpdate(actionStateTable[currStateOuter][currStateInner].state.doNothing, REWARD_POS)
   actionStateTable[currStateOuter][currStateInner].state.doNothing = reward
 
-  var rewardStr = reward.formatFloat(ffDecimal, 4)
-  echo(fmt"Rewarded pos {rewardStr}  to states:  {currStateOuter}  ---   {currStateInner} for doing nothing")
+  #var rewardStr = reward.formatFloat(ffDecimal, 4)
+ # echo(fmt"Rewarded pos {rewardStr}  to states:  {currStateOuter}  ---   {currStateInner} for doing nothing")
 
 
 proc goUpASub() =
   var reward = qUpdate(actionStateTable[currStateOuter][currStateInner].state.goUp, REWARD_NEG)
   actionStateTable[currStateOuter][currStateInner].state.goUp = reward
 
-  var rewardStr = reward.formatFloat(ffDecimal, 4)
-  echo(fmt"Rewarded neg {rewardStr}  to states:  {currStateOuter}  ---   {currStateInner} for going up")
+ # var rewardStr = reward.formatFloat(ffDecimal, 4)
+ # echo(fmt"Rewarded neg {rewardStr}  to states:  {currStateOuter}  ---   {currStateInner} for going up")
 
 proc goDownSub() =
   var reward = qUpdate(actionStateTable[currStateOuter][currStateInner].state.goDown, REWARD_NEG)
   actionStateTable[currStateOuter][currStateInner].state.goDown = reward
 
-  var rewardStr = reward.formatFloat(ffDecimal, 4)
-  echo(fmt"Rewarded neg {rewardStr}  to states:  {currStateOuter}  ---   {currStateInner} for going down")
+#  var rewardStr = reward.formatFloat(ffDecimal, 4)
+#  echo(fmt"Rewarded neg {rewardStr}  to states:  {currStateOuter}  ---   {currStateInner} for going down")
 
 proc doNothinSub() =
   var reward = qUpdate(actionStateTable[currStateOuter][currStateInner].state.doNothing, REWARD_NEG)
   actionStateTable[currStateOuter][currStateInner].state.doNothing = reward
 
-  var rewardStr = reward.formatFloat(ffDecimal, 4)
-  echo(fmt"Rewarded neg {rewardStr}  to states:  {currStateOuter}  ---   {currStateInner} for doing nothing")
+ # var rewardStr = reward.formatFloat(ffDecimal, 4)
+ # echo(fmt"Rewarded neg {rewardStr}  to states:  {currStateOuter}  ---   {currStateInner} for doing nothing")
 
 
 proc assertAction() =
@@ -759,53 +761,22 @@ proc rewardState() =
           goUpAdd()
 
 
+var
+  t0 = getTime().toUnix()
+  t1 = getTime().toUnix()
 
+proc saveData() =   
+  t1 = getTime().toUnix()
 
-proc saveDataThread(data: pointer): cint {.cdecl.} =   
-  
-  type 
-    dataObj = ref ThreadData
-    tupRef = ref tupObj
-    tupObj = object
-      i: uint32
-      t: dataObj
-      b: bool
+  if (t1 - t0) mod 120 == 0:
+    writeFile("action_table.json", fmt"{(%* actionStateTable)}")
+ #   echo("Data saved")
+    sleep(1000)
 
-  const 
-    TIMER = 10
-
-  var 
-    t = cast[dataObj](data)
-    tickInner: uint32 = 10000
-
-
-  proc doSaveTimer(interval: uint32, param: pointer): uint32 {.cdecl.} =
-    var tupp = cast[tupRef](param)    
-    echo(tupp[].i)
-    echo(tupp[].i mod TIMER == 0)
-    
-    tupp[].i -= 1
-
-    if tupp[].i  == 0:
-      #writeFile("action_table.json", $$(%* tupp[].t))
-      echo(fmt"Saved at {tupp[].i}")
-
-    return tupp[].i
-
-
-  var tup = tupObj(i: tickInner, t: t)
-  echo(tup)
-  var timer = sdl.addTimer(10000, doSaveTimer, tup.addr)
-  echo(timer)
-  if timer == 0:
-      discard sdl.removeTimer(timer)    
-
-    
 
 
 
 if init(app):
-    discard createThread(saveDataThread, "saveData", addr actionStateTable)
 
     while not done:
 
@@ -826,11 +797,13 @@ if init(app):
         drawPlayerPaddle(app)
         
         calculateStateOfGame()
-        #rewardState()
+        rewardState()
         
 
 
         >>app
+
+        saveData()
 
 
 # Shutdown
