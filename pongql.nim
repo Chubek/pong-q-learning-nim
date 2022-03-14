@@ -7,7 +7,8 @@ import
   std/strutils,
   std/strformat,
   std/json,
-  std/times
+  std/marshal
+
 const
   Title = "SDL2 App"
   ScreenW = 640 # Window width
@@ -761,31 +762,50 @@ proc rewardState() =
 
 
 proc saveDataThread(data: pointer): cint {.cdecl.} =   
-  let t0 = getTime().toUnix()
   
-  type dataObj = ref ThreadData
+  type 
+    dataObj = ref ThreadData
+    tupRef = ref tupObj
+    tupObj = object
+      i: uint32
+      t: dataObj
+      b: bool
 
-  var t = cast[dataObj](data)
+  const 
+    TIMER = 10
 
-
-  while true:
-    let t1 = getTime().toUnix()
-
-    if (t1 - t0) mod 30 == 0:
-
-      var f = open("action_state.json", fmWrite)    
-
-
-      f.write(fmt"{%* t}")
-      f.close()
-
-      delay(10)
+  var 
+    t = cast[dataObj](data)
+    tickInner: uint32 = 10000
 
 
+  proc doSaveTimer(interval: uint32, param: pointer): uint32 {.cdecl.} =
+    var tupp = cast[tupRef](param)    
+    echo(tupp[].i)
+    echo(tupp[].i mod TIMER == 0)
+    
+    tupp[].i -= 1
 
-discard createThread(saveDataThread, "saveData", addr actionStateTable)
+    if tupp[].i  == 0:
+      #writeFile("action_table.json", $$(%* tupp[].t))
+      echo(fmt"Saved at {tupp[].i}")
+
+    return tupp[].i
+
+
+  var tup = tupObj(i: tickInner, t: t)
+  echo(tup)
+  var timer = sdl.addTimer(10000, doSaveTimer, tup.addr)
+  echo(timer)
+  if timer == 0:
+      discard sdl.removeTimer(timer)    
+
+    
+
+
 
 if init(app):
+    discard createThread(saveDataThread, "saveData", addr actionStateTable)
 
     while not done:
 
@@ -806,7 +826,7 @@ if init(app):
         drawPlayerPaddle(app)
         
         calculateStateOfGame()
-        rewardState()
+        #rewardState()
         
 
 
