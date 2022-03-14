@@ -6,7 +6,7 @@ import
   std/enumerate,
   std/strutils,
   std/strformat,
-  std/marshal,
+  std/json,
   std/times
 const
   Title = "SDL2 App"
@@ -136,7 +136,7 @@ const
     MIDDLE_LINE_WIDTH = 20
     MIDDLE_LINE_HIGHT = ScreenH
 
-    PADDLE_SPEED_PLAYER = 8
+    PADDLE_SPEED_PLAYER = 14
     PADDLE_SPEED_OPPONENT = 16
 
     RADIUS = 8
@@ -759,25 +759,31 @@ proc rewardState() =
 
 
 
-let t0 = cpuTime()
 
-var 
-  doSave = true
-  f = open("action_state.json", fmWrite)
-
-proc saveTable() =   
-  let t1 = cpuTime()
-
-  if (t1 - t0) mod 160.0 == 0 and doSave:
-    doSave = false
-
-    f.write(fmt"\n---------- \n{$$actionStateTable}")
-
-
-  if (t1 - t0) mod 165.0 == 0 and not doSave:
-    doSave = true
-
+proc saveDataThread(data: pointer): cint {.cdecl.} =   
+  let t0 = getTime().toUnix()
   
+  type dataObj = ref ThreadData
+
+  var t = cast[dataObj](data)
+
+
+  while true:
+    let t1 = getTime().toUnix()
+
+    if (t1 - t0) mod 30 == 0:
+
+      var f = open("action_state.json", fmWrite)    
+
+
+      f.write(fmt"{%* t}")
+      f.close()
+
+      delay(10)
+
+
+
+discard createThread(saveDataThread, "saveData", addr actionStateTable)
 
 if init(app):
 
@@ -806,10 +812,7 @@ if init(app):
 
         >>app
 
-        saveTable()
-
 
 # Shutdown
 exit(app)
-f.close()
 
